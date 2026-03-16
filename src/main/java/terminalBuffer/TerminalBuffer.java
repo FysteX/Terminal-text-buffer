@@ -85,4 +85,43 @@ public class TerminalBuffer {
         return cursorPositionX;
     }
 
+    public void setCursorPosition(int cursorPositionX, int cursorPositionY) {
+        if(cursorPositionX < 0 || cursorPositionY < 0 || cursorPositionX >= screenWidth || cursorPositionY >= screenHeight) {
+            throw new CursorOutOfBoundaryException("Cursor position out of boundary");
+        }
+        this.cursorPositionX = cursorPositionX;
+        this.cursorPositionY = cursorPositionY;
+    }
+
+    public void moveCursorLeft(int n) throws CursorOutOfBoundaryException {
+        cursorPositionX -= n;
+        if(cursorPositionX < 0) {
+            cursorPositionX += n;
+            throw new CursorOutOfBoundaryException("X cursor position out of boundary");
+        }
+    }
+    public void moveCursorRight(int n) throws CursorOutOfBoundaryException {
+        cursorPositionX += n;
+        if(cursorPositionX >= screenWidth) {
+            cursorPositionX -= n;
+            throw new CursorOutOfBoundaryException("X cursor position out of boundary");
+        }
+    }
+
+    public void moveCursorUp(int n) throws CursorOutOfBoundaryException {
+        cursorPositionY -= n;
+        if(cursorPositionY < 0) {
+            cursorPositionY += n;
+            throw new CursorOutOfBoundaryException("Y cursor position out of boundary");
+        }
+    }
+
+    public void moveCursorDown(int n) throws CursorOutOfBoundaryException {
+        cursorPositionY += n;
+        if(cursorPositionY >= screenHeight) {
+            cursorPositionY -= n;
+            throw new CursorOutOfBoundaryException("Y cursor position out of boundary");
+        }
+    }
+
 }
