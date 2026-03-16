@@ -112,4 +112,16 @@ public class Cell {
         this.value = '\u0000';
     }
 
+    @Override
+    public String toString() { return "" + value;}
+
+    public boolean isEmpty() {
+        return value == '\u0000';
+    }
+
+    @Override
+    public Cell clone() {
+        return new Cell(styles, foregroundColor, backgroundColor, value);
+    }
+
 }

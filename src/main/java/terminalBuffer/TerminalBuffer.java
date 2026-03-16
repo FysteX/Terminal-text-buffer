@@ -1,6 +1,7 @@
 package terminalBuffer;
 
 import java.util.ArrayDeque;
+import java.util.Deque;
 
 public class TerminalBuffer {
 
@@ -139,6 +140,10 @@ public class TerminalBuffer {
         firstRow = (firstRow + 1) % screenHeight;
     }
 
+    private Cell getCellAtCurrentCursorPosition() {
+        return screen[cursorPositionY][cursorPositionX];
+    }
+
 
     private void addChar(char c) {
         if(c == '\n') {
@@ -170,6 +175,15 @@ public class TerminalBuffer {
         }
     }
 
+    /// same as addChar, but it changes attributes
+    private void addCell(Cell cell) {
+        currentBackgroundColor = cell.getBackgroundColor();
+        currentForegroundColor = cell.getForegroundColor();
+        currentStyles = cell.getStyles();
+
+        addChar(cell.getValue());
+    }
+
     public void writeTextOnLine(String text) {
         int initialRow = cursorPositionY;
         for(int i = 0; i < text.length(); i++) {
@@ -178,6 +192,46 @@ public class TerminalBuffer {
         }
     }
 
+    public void insertTextOnLine(String text) {
+        Deque<Cell> cells = new ArrayDeque<>();
+        Cell currentPositionCell;
+
+        for(int i = 0; i < text.length(); i++) {
+            currentPositionCell = getCellAtCurrentCursorPosition();
+            if(!currentPositionCell.isEmpty()) {
+                cells.addLast(currentPositionCell.clone());
+            }
+            addChar(text.charAt(i));
+        }
+
+        int previousCursorPositionY = cursorPositionY;
+        int previousCursorPositionX = cursorPositionX;
+        int previousBackgroundColor = currentBackgroundColor;
+        int previousForegroundColor = currentForegroundColor;
+        int previousStyles = currentStyles;
+
+        while(!cells.isEmpty()) {
+            currentPositionCell = getCellAtCurrentCursorPosition();
+            if(!currentPositionCell.isEmpty()) {
+                cells.addLast(currentPositionCell.clone());
+            }
+            addCell(cells.pop());
+        }
+
+        cursorPositionY = previousCursorPositionY;
+        cursorPositionX = previousCursorPositionX;
+        currentBackgroundColor =  previousBackgroundColor;
+        currentForegroundColor = previousForegroundColor;
+        currentStyles = previousStyles;
+    }
+
+    public void fillLineWithCharacter(char c) {
+        for(int i = 0; i < screenWidth; i++) {
+            screen[cursorPositionY][i].setValue(c);
+        }
+    }
+
+    //GETTERS
     public String buildStringFromScreen(StringBuilder sb) {
         for(int i = 0; i < this.screenHeight; i++) {
             for(int j = 0; j < this.screenWidth; j++) {
