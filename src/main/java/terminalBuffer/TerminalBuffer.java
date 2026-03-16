@@ -19,6 +19,8 @@ public class TerminalBuffer {
     private Cell[][] screen;
     private ArrayDeque<Cell[]> scrollback;
 
+    private int firstRow;
+
     public TerminalBuffer(int scrollbackSize, int screenWidth, int screenHeight) {
         this.scrollbackSize = scrollbackSize;
         this.screenWidth = screenWidth;
@@ -35,6 +37,7 @@ public class TerminalBuffer {
             }
         }
         this.scrollback = new ArrayDeque<>();
+        firstRow = -1;
     }
 
     public void setCurrentForegroundColor(int currentForegroundColor) {
@@ -122,6 +125,84 @@ public class TerminalBuffer {
             cursorPositionY -= n;
             throw new CursorOutOfBoundaryException("Y cursor position out of boundary");
         }
+    }
+
+    private void scrollUp() {
+        scrollback.addLast(screen[firstRow]);
+        if(scrollback.size() > scrollbackSize) {
+            scrollback.removeFirst();
+        }
+        screen[firstRow] = new Cell[screenWidth];
+        for(int col = 0; col < screenWidth; col++) {
+            screen[firstRow][col] = new Cell();
+        }
+        firstRow = (firstRow + 1) % screenHeight;
+    }
+
+
+    private void addChar(char c) {
+        if(c == '\n') {
+            cursorPositionX = 0;
+            cursorPositionY = (cursorPositionY + 1) %  screenHeight;
+
+        } else if (c == '\r') {
+            cursorPositionX = 0;
+
+        } else {
+            screen[cursorPositionY][cursorPositionX].setValue(c);
+            screen[cursorPositionY][cursorPositionX].setStyles(currentStyles);
+            screen[cursorPositionY][cursorPositionX].setBackgroundColor(currentBackgroundColor);
+            screen[cursorPositionY][cursorPositionX].setForegroundColor(currentForegroundColor);
+
+            cursorPositionX++;
+            if(cursorPositionX == screenWidth) {
+                cursorPositionX = 0;
+                cursorPositionY = (cursorPositionY + 1) %  screenHeight;
+            }
+        }
+
+        if(cursorPositionY > 0 && firstRow == -1) {
+            //initaly
+            firstRow = 0;
+        }
+        else if(cursorPositionY == firstRow) {
+            scrollUp();
+        }
+    }
+
+    public void writeTextOnLine(String text) {
+        int initialRow = cursorPositionY;
+        for(int i = 0; i < text.length(); i++) {
+            addChar(text.charAt(i));
+            if (cursorPositionY != initialRow) break;
+        }
+    }
+
+    public String buildStringFromScreen(StringBuilder sb) {
+        for(int i = 0; i < this.screenHeight; i++) {
+            for(int j = 0; j < this.screenWidth; j++) {
+                sb.append(this.screen[(firstRow + i) % screenHeight][j].toString());
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
+    }
+
+    public String getEntireScreen() {
+        StringBuilder sb = new StringBuilder();
+        return buildStringFromScreen(sb);
+    }
+
+    public String getEntireScreenAndScrollback() {
+        StringBuilder sb = new StringBuilder();
+        for(Cell[] row: scrollback) {
+            for(int col = 0; col < screenWidth; col++) {
+                sb.append(row[col].toString());
+            }
+            sb.append('\n');
+        }
+        sb.append('\n');
+        return buildStringFromScreen(sb);
     }
 
 }
