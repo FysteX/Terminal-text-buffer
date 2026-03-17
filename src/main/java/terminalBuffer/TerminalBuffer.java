@@ -231,7 +231,75 @@ public class TerminalBuffer {
         }
     }
 
+    public void clearLine() {
+        fillLineWithCharacter('\u0000');
+    }
+
+    public void insertEmptyLineAtBottom() {
+        scrollUp();
+    }
+
+    public void clearEntireScreen() {
+        for (int row = 0; row < screenHeight; row++) {
+            for (int col = 0; col < screenWidth; col++) {
+                screen[row][col].resetCell();
+            }
+        }
+    }
+
+    public void clearScreenAndScrollback() {
+        clearEntireScreen();
+        scrollback.clear();
+    }
+
     //GETTERS
+
+    private Cell getCellAt(int row, int col) throws ArgumentsOutOfRangeException{
+        if(row < 0 || row >= screenHeight + scrollback.size() || col < 0 || col >= screenWidth) {
+            throw new ArgumentsOutOfRangeException("Row or column out of boundary");
+        }
+        if(row < scrollback.size()) {
+            Cell[] line = (Cell[]) scrollback.toArray()[row];
+            return line[col];
+        } else {
+            return this.screen[(firstRow + row) % screenHeight][col];
+        }
+    }
+
+    public char getCharAt(int row, int col) throws ArgumentsOutOfRangeException {
+        return getCellAt(row, col).getValue();
+    }
+
+    public int getBackgroundColorAt(int row, int col) throws ArgumentsOutOfRangeException {
+        return getCellAt(row, col).getBackgroundColor();
+    }
+
+    public int getForegroundColorAt(int row, int col) throws ArgumentsOutOfRangeException {
+        return getCellAt(row, col).getForegroundColor();
+    }
+
+    public int getStylesAt(int row, int col) throws ArgumentsOutOfRangeException {
+        return getCellAt(row, col).getStyles();
+    }
+
+    public String getLine(int row) throws ArgumentsOutOfRangeException {
+        if(row < 0 || row >= screenHeight + scrollback.size()) {
+            throw new ArgumentsOutOfRangeException("Row or column out of boundary");
+        }
+        StringBuilder sb = new StringBuilder();
+        if(row < scrollback.size()) {
+            Cell[] line = (Cell[]) scrollback.toArray()[row];
+            for(int i = 0 ; i < line.length; i++) {
+                sb.append(line[i].getValue());
+            }
+        } else {
+            for(int i = 0 ; i < screenWidth; i++) {
+                sb.append(this.screen[(firstRow + row) % screenHeight][i]);
+            }
+        }
+        return sb.toString();
+    }
+
     public String buildStringFromScreen(StringBuilder sb) {
         for(int i = 0; i < this.screenHeight; i++) {
             for(int j = 0; j < this.screenWidth; j++) {
@@ -258,5 +326,4 @@ public class TerminalBuffer {
         sb.append('\n');
         return buildStringFromScreen(sb);
     }
-
 }
