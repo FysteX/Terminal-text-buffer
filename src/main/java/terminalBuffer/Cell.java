@@ -9,11 +9,14 @@ public class Cell {
 
     private int styles;
 
+    private boolean cursorAt;
+
     public Cell(int styles, int foregroundColor, int backgroundColor, char value) {
         this.styles = styles;
         this.foregroundColor = foregroundColor;
         this.backgroundColor = backgroundColor;
         this.value = value;
+        cursorAt = false;
     }
 
     public Cell() {
@@ -124,4 +127,11 @@ public class Cell {
         return new Cell(styles, foregroundColor, backgroundColor, value);
     }
 
+    public boolean isCursorAt() {
+        return cursorAt;
+    }
+
+    public void setCursorAt(boolean cursorAt) {
+        this.cursorAt = cursorAt;
+    }
 }

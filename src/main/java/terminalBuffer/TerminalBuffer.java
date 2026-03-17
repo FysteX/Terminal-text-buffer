@@ -37,6 +37,7 @@ public class TerminalBuffer {
                 screen[row][col] = new Cell();
             }
         }
+        this.screen[0][0].setCursorAt(true);
         this.scrollback = new ArrayDeque<>();
         firstRow = -1;
     }
@@ -50,6 +51,12 @@ public class TerminalBuffer {
     }
 
     public void setCurrentStyles(int currentStyles) {
+        this.currentStyles = currentStyles;
+    }
+
+    public void setAttributes(int currentForegroundColor, int currentBackgroundColor, int currentStyles) {
+        this.currentForegroundColor = currentForegroundColor;
+        this.currentBackgroundColor = currentBackgroundColor;
         this.currentStyles = currentStyles;
     }
 
@@ -89,43 +96,57 @@ public class TerminalBuffer {
         return cursorPositionX;
     }
 
-    public void setCursorPosition(int cursorPositionX, int cursorPositionY) {
+    public void setCursorPosition(int cursorPositionY, int cursorPositionX) {
         if(cursorPositionX < 0 || cursorPositionY < 0 || cursorPositionX >= screenWidth || cursorPositionY >= screenHeight) {
             throw new CursorOutOfBoundaryException("Cursor position out of boundary");
         }
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(false);
         this.cursorPositionX = cursorPositionX;
         this.cursorPositionY = cursorPositionY;
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
     }
 
     public void moveCursorLeft(int n) throws CursorOutOfBoundaryException {
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(false);
         cursorPositionX -= n;
         if(cursorPositionX < 0) {
             cursorPositionX += n;
+            this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
             throw new CursorOutOfBoundaryException("X cursor position out of boundary");
         }
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
     }
     public void moveCursorRight(int n) throws CursorOutOfBoundaryException {
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(false);
         cursorPositionX += n;
         if(cursorPositionX >= screenWidth) {
             cursorPositionX -= n;
+            this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
             throw new CursorOutOfBoundaryException("X cursor position out of boundary");
         }
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
     }
 
     public void moveCursorUp(int n) throws CursorOutOfBoundaryException {
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(false);
         cursorPositionY -= n;
         if(cursorPositionY < 0) {
             cursorPositionY += n;
+            this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
             throw new CursorOutOfBoundaryException("Y cursor position out of boundary");
         }
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
     }
 
     public void moveCursorDown(int n) throws CursorOutOfBoundaryException {
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(false);
         cursorPositionY += n;
         if(cursorPositionY >= screenHeight) {
             cursorPositionY -= n;
+            this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
             throw new CursorOutOfBoundaryException("Y cursor position out of boundary");
         }
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
     }
 
     private void scrollUp() {
@@ -140,12 +161,8 @@ public class TerminalBuffer {
         firstRow = (firstRow + 1) % screenHeight;
     }
 
-    private Cell getCellAtCurrentCursorPosition() {
-        return screen[cursorPositionY][cursorPositionX];
-    }
-
-
     private void addChar(char c) {
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(false);
         if(c == '\n') {
             cursorPositionX = 0;
             cursorPositionY = (cursorPositionY + 1) %  screenHeight;
@@ -165,6 +182,7 @@ public class TerminalBuffer {
                 cursorPositionY = (cursorPositionY + 1) %  screenHeight;
             }
         }
+        this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
 
         if(cursorPositionY > 0 && firstRow == -1) {
             //initaly
@@ -252,7 +270,50 @@ public class TerminalBuffer {
         scrollback.clear();
     }
 
+    public TerminalBuffer changeScreenSize(int width, int height) {
+        if(width <= 0 || height <= 0) {
+            return this;
+        }
+        TerminalBuffer resizedBuffer = new TerminalBuffer(this.scrollbackSize,  width, height);
+
+        while(!scrollback.isEmpty()) {
+            for(Cell cell: scrollback.pop()) {
+                resizedBuffer.addCell(cell);
+            }
+        }
+
+        Cell resizedBufferCursorCell = null;
+        for(int row = 0; row < screenHeight; row++) {
+            for(int col = 0; col < screenWidth; col++) {
+                if(screen[row][col].isCursorAt()) {
+                    resizedBufferCursorCell = resizedBuffer.getCellAtCurrentCursorPosition();
+                }
+                resizedBuffer.addCell(screen[row][col]);
+                resizedBuffer.getCellAtCurrentCursorPosition().setCursorAt(false);
+
+                if(screen[row][col].isCursorAt()) {
+                    resizedBufferCursorCell.setCursorAt(true);
+                }
+            }
+        }
+
+        resizedBuffer.setAttributes(currentForegroundColor, currentBackgroundColor , currentStyles);
+
+        for(int row = 0; row < resizedBuffer.screenHeight; row++) {
+            for(int col = 0; col < resizedBuffer.screenWidth; col++) {
+                if(resizedBuffer.screen[row][col].isCursorAt()) {
+                    resizedBuffer.setCursorPosition(row, col);
+                }
+            }
+        }
+        return resizedBuffer;
+    }
+
     //GETTERS
+
+    private Cell getCellAtCurrentCursorPosition() {
+        return screen[cursorPositionY][cursorPositionX];
+    }
 
     private Cell getCellAt(int row, int col) throws ArgumentsOutOfRangeException{
         if(row < 0 || row >= screenHeight + scrollback.size() || col < 0 || col >= screenWidth) {
@@ -303,6 +364,9 @@ public class TerminalBuffer {
     public String buildStringFromScreen(StringBuilder sb) {
         for(int i = 0; i < this.screenHeight; i++) {
             for(int j = 0; j < this.screenWidth; j++) {
+                if((firstRow + i) % screenHeight == cursorPositionY && j == cursorPositionX) {
+                    sb.append('|');
+                }
                 sb.append(this.screen[(firstRow + i) % screenHeight][j].toString());
             }
             sb.append('\n');
@@ -323,7 +387,12 @@ public class TerminalBuffer {
             }
             sb.append('\n');
         }
+
+        for (int col = 0; col < screenWidth; col++) {
+            sb.append('-');
+        }
         sb.append('\n');
+
         return buildStringFromScreen(sb);
     }
 }
