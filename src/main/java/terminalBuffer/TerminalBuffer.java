@@ -102,7 +102,7 @@ public class TerminalBuffer {
         }
         this.screen[cursorPositionY][cursorPositionX].setCursorAt(false);
         this.cursorPositionX = cursorPositionX;
-        this.cursorPositionY = cursorPositionY;
+        this.cursorPositionY = (firstRow == -1 ? 0 : firstRow) + cursorPositionY;
         this.screen[cursorPositionY][cursorPositionX].setCursorAt(true);
     }
 
@@ -150,6 +150,11 @@ public class TerminalBuffer {
     }
 
     private void scrollUp() {
+        if(firstRow == -1) firstRow = 0;
+        if(cursorPositionY == 0 && screenHeight > 1) {
+            cursorPositionY++;
+            cursorPositionX = 0;
+        }
         scrollback.addLast(screen[firstRow]);
         if(scrollback.size() > scrollbackSize) {
             scrollback.removeFirst();
@@ -163,6 +168,7 @@ public class TerminalBuffer {
 
     private void addChar(char c) {
         this.screen[cursorPositionY][cursorPositionX].setCursorAt(false);
+        int initialRow = cursorPositionY;
         if(c == '\n') {
             cursorPositionX = 0;
             cursorPositionY = (cursorPositionY + 1) %  screenHeight;
@@ -188,7 +194,7 @@ public class TerminalBuffer {
             //initaly
             firstRow = 0;
         }
-        else if(cursorPositionY == firstRow) {
+        else if(cursorPositionY == firstRow && initialRow != cursorPositionY) {
             scrollUp();
         }
     }
@@ -205,6 +211,7 @@ public class TerminalBuffer {
     public void writeTextOnLine(String text) {
         int initialRow = cursorPositionY;
         for(int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n') break;
             addChar(text.charAt(i));
             if (cursorPositionY != initialRow) break;
         }
@@ -283,16 +290,24 @@ public class TerminalBuffer {
         }
 
         Cell resizedBufferCursorCell = null;
+        int emptyCellsBetweenChars = 0;
         for(int row = 0; row < screenHeight; row++) {
             for(int col = 0; col < screenWidth; col++) {
                 if(screen[row][col].isCursorAt()) {
                     resizedBufferCursorCell = resizedBuffer.getCellAtCurrentCursorPosition();
                 }
-                resizedBuffer.addCell(screen[row][col]);
-                resizedBuffer.getCellAtCurrentCursorPosition().setCursorAt(false);
+                if(screen[row][col].getValue() == '\u0000') {
+                    emptyCellsBetweenChars++;
+                } else {
+                    while(emptyCellsBetweenChars-- > 0) {
+                        resizedBuffer.addChar('\u0000');
+                    }
+                    resizedBuffer.addCell(screen[row][col]);
+                    resizedBuffer.getCellAtCurrentCursorPosition().setCursorAt(false);
 
-                if(screen[row][col].isCursorAt()) {
-                    resizedBufferCursorCell.setCursorAt(true);
+                    if(screen[row][col].isCursorAt()) {
+                        resizedBufferCursorCell.setCursorAt(true);
+                    }
                 }
             }
         }
@@ -323,7 +338,7 @@ public class TerminalBuffer {
             Cell[] line = (Cell[]) scrollback.toArray()[row];
             return line[col];
         } else {
-            return this.screen[(firstRow + row) % screenHeight][col];
+            return this.screen[((firstRow == -1 ? 0 : firstRow) + row) % screenHeight][col];
         }
     }
 
@@ -355,7 +370,7 @@ public class TerminalBuffer {
             }
         } else {
             for(int i = 0 ; i < screenWidth; i++) {
-                sb.append(this.screen[(firstRow + row) % screenHeight][i]);
+                sb.append(this.screen[((firstRow == -1 ? 0 : firstRow) + row) % screenHeight][i]);
             }
         }
         return sb.toString();
@@ -364,10 +379,10 @@ public class TerminalBuffer {
     public String buildStringFromScreen(StringBuilder sb) {
         for(int i = 0; i < this.screenHeight; i++) {
             for(int j = 0; j < this.screenWidth; j++) {
-                if((firstRow + i) % screenHeight == cursorPositionY && j == cursorPositionX) {
+                if(((firstRow == -1 ? 0 : firstRow) + i) % screenHeight == cursorPositionY && j == cursorPositionX) {
                     sb.append('|');
                 }
-                sb.append(this.screen[(firstRow + i) % screenHeight][j].toString());
+                sb.append(this.screen[((firstRow == -1 ? 0 : firstRow) + i) % screenHeight][j].toString());
             }
             sb.append('\n');
         }
@@ -395,4 +410,5 @@ public class TerminalBuffer {
 
         return buildStringFromScreen(sb);
     }
+
 }
